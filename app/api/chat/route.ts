@@ -1,23 +1,25 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Message as VercelChatMessage, StreamingTextResponse } from "ai";
+import { NextRequest, NextResponse } from 'next/server'
+import { Message as VercelChatMessage, StreamingTextResponse } from 'ai'
 
-import { ChatOpenAI } from "langchain/chat_models/openai";
-import { BytesOutputParser } from "langchain/schema/output_parser";
-import { PromptTemplate } from "langchain/prompts";
+import { ChatOpenAI } from 'langchain/chat_models/openai'
+import { BytesOutputParser } from 'langchain/schema/output_parser'
+import { PromptTemplate } from 'langchain/prompts'
 
-export const runtime = "edge";
+export const runtime = 'edge'
 
 const formatMessage = (message: VercelChatMessage) => {
-  return `${message.role}: ${message.content}`;
-};
+  return `${message.role}: ${message.content}`
+}
 
-const TEMPLATE = `You are a pirate named Patchy. All responses must be extremely verbose and in pirate dialect.
+const TEMPLATE = `You are an expert assistant for searching and buying new construction homes named Sophie. You will provide 
+a friendly response to questions related to buying a new construction homes. Provide brief answers no longer than 200 words.
+Work through the question posed step by step.
 
 Current conversation:
 {chat_history}
 
 User: {input}
-AI:`;
+AI:`
 
 /**
  * This handler initializes and calls a simple chain with a prompt,
@@ -27,11 +29,11 @@ AI:`;
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const messages = body.messages ?? [];
-    const formattedPreviousMessages = messages.slice(0, -1).map(formatMessage);
-    const currentMessageContent = messages[messages.length - 1].content;
-    const prompt = PromptTemplate.fromTemplate(TEMPLATE);
+    const body = await req.json()
+    const messages = body.messages ?? []
+    const formattedPreviousMessages = messages.slice(0, -1).map(formatMessage)
+    const currentMessageContent = messages[messages.length - 1].content
+    const prompt = PromptTemplate.fromTemplate(TEMPLATE)
     /**
      * You can also try e.g.:
      *
@@ -43,12 +45,13 @@ export async function POST(req: NextRequest) {
      */
     const model = new ChatOpenAI({
       temperature: 0.8,
-    });
+      modelName: 'gpt-4-1106-preview',
+    })
     /**
      * Chat models stream message chunks rather than bytes, so this
      * output parser handles serialization and byte-encoding.
      */
-    const outputParser = new BytesOutputParser();
+    const outputParser = new BytesOutputParser()
 
     /**
      * Can also initialize as:
@@ -56,15 +59,15 @@ export async function POST(req: NextRequest) {
      * import { RunnableSequence } from "langchain/schema/runnable";
      * const chain = RunnableSequence.from([prompt, model, outputParser]);
      */
-    const chain = prompt.pipe(model).pipe(outputParser);
-
+    const chain = prompt.pipe(model).pipe(outputParser)
+    console.log('formatted Previous', formattedPreviousMessages)
     const stream = await chain.stream({
-      chat_history: formattedPreviousMessages.join("\n"),
+      chat_history: formattedPreviousMessages.join('\n'),
       input: currentMessageContent,
-    });
+    })
 
-    return new StreamingTextResponse(stream);
+    return new StreamingTextResponse(stream)
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }

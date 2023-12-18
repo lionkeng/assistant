@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server'
 
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { z } from 'zod'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 
-import { ChatOpenAI } from "langchain/chat_models/openai";
-import { PromptTemplate } from "langchain/prompts";
-import { JsonOutputFunctionsParser } from "langchain/output_parsers";
+import { ChatOpenAI } from 'langchain/chat_models/openai'
+import { PromptTemplate } from 'langchain/prompts'
+import { JsonOutputFunctionsParser } from 'langchain/output_parsers'
 
-export const runtime = "edge";
+export const runtime = 'edge'
 
 const TEMPLATE = `Extract the requested fields from the input.
 
@@ -15,7 +15,7 @@ The field "entity" refers to the first mentioned entity in the input.
 
 Input:
 
-{input}`;
+{input}`
 
 /**
  * This handler initializes and calls an OpenAI Functions powered
@@ -25,18 +25,18 @@ Input:
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const messages = body.messages ?? [];
-    const currentMessageContent = messages[messages.length - 1].content;
+    const body = await req.json()
+    const messages = body.messages ?? []
+    const currentMessageContent = messages[messages.length - 1].content
 
-    const prompt = PromptTemplate.fromTemplate(TEMPLATE);
+    const prompt = PromptTemplate.fromTemplate(TEMPLATE)
     /**
      * Function calling is currently only supported with ChatOpenAI models
      */
     const model = new ChatOpenAI({
       temperature: 0.8,
-      modelName: "gpt-4",
-    });
+      modelName: 'gpt-4',
+    })
 
     /**
      * We use Zod (https://zod.dev) to define our schema for convenience,
@@ -44,15 +44,15 @@ export async function POST(req: NextRequest) {
      */
     const schema = z.object({
       tone: z
-        .enum(["positive", "negative", "neutral"])
-        .describe("The overall tone of the input"),
-      entity: z.string().describe("The entity mentioned in the input"),
-      word_count: z.number().describe("The number of words in the input"),
+        .enum(['positive', 'negative', 'neutral'])
+        .describe('The overall tone of the input'),
+      entity: z.string().describe('The entity mentioned in the input'),
+      word_count: z.number().describe('The number of words in the input'),
       chat_response: z.string().describe("A response to the human's input"),
       final_punctuation: z
         .optional(z.string())
-        .describe("The final punctuation mark in the input, if any."),
-    });
+        .describe('The final punctuation mark in the input, if any.'),
+    })
 
     /**
      * Bind the function and schema to the OpenAI model.
@@ -64,27 +64,27 @@ export async function POST(req: NextRequest) {
     const functionCallingModel = model.bind({
       functions: [
         {
-          name: "output_formatter",
-          description: "Should always be used to properly format output",
+          name: 'output_formatter',
+          description: 'Should always be used to properly format output',
           parameters: zodToJsonSchema(schema),
         },
       ],
-      function_call: { name: "output_formatter" },
-    });
+      function_call: { name: 'output_formatter' },
+    })
 
     /**
      * Returns a chain with the function calling model.
      */
     const chain = prompt
       .pipe(functionCallingModel)
-      .pipe(new JsonOutputFunctionsParser());
+      .pipe(new JsonOutputFunctionsParser())
 
     const result = await chain.invoke({
       input: currentMessageContent,
-    });
+    })
 
-    return NextResponse.json(result, { status: 200 });
+    return NextResponse.json(result, { status: 200 })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }
