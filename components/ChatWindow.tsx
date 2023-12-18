@@ -106,7 +106,6 @@ export function ChatWindow(props: {
         content: input,
         role: 'user',
       })
-      console.log('messageWithUserReply', messagesWithUserReply)
       setMessages(messagesWithUserReply)
       const response = await fetch(endpoint, {
         method: 'POST',
